@@ -50,6 +50,10 @@ const unsigned long sendInterval = 50;  // Send every 50ms
 // Retry variables
 const int maxRetries = 3;  // Maximum number of retries for sending
 
+// Sleep mode variables
+bool inSleepMode = true;
+int unsuccessfulSendCount = 0;  // Track the number of unsuccessful sends
+
 void setup() {
   Serial.begin(9600);
 
@@ -73,6 +77,12 @@ void setup() {
 }
 
 void loop() {
+  if (inSleepMode) {
+    // Sleep mode logic
+    digitalWrite(LED_PIN, (millis() / 500) % 2);  // Blink LED every 500ms
+    delay(500);                                   // Sleep for 500ms
+  }
+
   // Read inputs
   int newJoystickX = map(analogRead(JOYSTICK_X), 0, 1023, -100, 100);
   int newJoystickY = map(analogRead(JOYSTICK_Y), 0, 1023, -100, 100);
@@ -130,5 +140,19 @@ void loop() {
     Serial.print(data.joystickButton);
     Serial.print(" Key: ");
     Serial.println(data.onOffKey);
+
+    // If sending is successful, reset unsuccessful count and exit sleep mode
+    if (success) {
+      inSleepMode = false;
+      unsuccessfulSendCount = 0;  // Reset unsuccessful send count
+    } else {
+      unsuccessfulSendCount++;
+      // After 10 unsuccessful attempts, enter sleep mode
+      if (unsuccessfulSendCount >= 10) {
+        inSleepMode = true;
+        unsuccessfulSendCount = 0;  // Reset count after entering sleep mode
+        Serial.println("Switching to sleep mode");
+      }
+    }
   }
 }
